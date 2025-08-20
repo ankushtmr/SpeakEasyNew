@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    // Emit modern JS but keep CommonJS modules (works great with Express)
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+
+    // Folder layout
+    "rootDir": "src",
+    "outDir": "dist",
+
+    // Let `import express from "express"` work in CJS
+    "esModuleInterop": true,
+
+    // Typescript niceties
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  }
+}
