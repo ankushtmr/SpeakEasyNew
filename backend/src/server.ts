@@ -1,10 +1,12 @@
 import express from "express";
 import cors from "cors";
 import { engagementsRouter } from "./routes/engagements";
+import { analyticsRouter } from "./routes/analytics";
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use("/analytics", analyticsRouter);
 
 // Health
 app.get("/health", (_req, res) => res.json({ ok: true, service: "api" }));
