@@ -1,0 +1,42 @@
+// backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Minimal Phase‑1 model: Engagement with Client/Talk/Region fields
+model Engagement {
+  id        String   @id @default(cuid())
+
+  // Client Details
+  dealName   String
+  clientName String
+  industry   String?     // optional for now
+  audience   String?     // "Size, roles" (free‑text for POC)
+  eventType  String?     // Conference, Gala Dinner, etc.
+
+  // Talk Details
+  talkTitle  String
+  talkDate   DateTime    // when the talk happened/will happen
+  format     Format      // in-person / online
+
+  // Region Details
+  location   String      // city, country free‑text for POC
+
+  // Multi‑tenancy later: accountId/userId
+  // accountId String?    // (add after auth)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Enum to keep format clean
+enum Format {
+  IN_PERSON
+  ONLINE
+}
