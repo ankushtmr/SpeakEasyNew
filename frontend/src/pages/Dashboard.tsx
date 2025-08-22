@@ -1,8 +1,5 @@
-
 import { useEffect, useState } from "react";
 
-// This describes exactly what the API returns.
-// TS will warn us if the response doesn't match.
 type EngagementFrequency = {
   totalTalks: number;
   byFormat: { inPerson: number; online: number };
@@ -11,45 +8,32 @@ type EngagementFrequency = {
 };
 
 export default function Dashboard() {
-  // Local state for data and errors
   const [data, setData] = useState<EngagementFrequency | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch once after the component mounts
+  async function load() {
+    try {
+      setError(null);
+      setData(null);
+      const res = await fetch("http://localhost:4000/analytics/engagement-frequency");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setData(await res.json());
+    } catch (e: any) {
+      setError(String(e));
+    }
+  }
+
   useEffect(() => {
-    const controller = new AbortController();
-
-    (async () => {
-      try {
-        const res = await fetch(
-          "http://localhost:4000/analytics/engagement-frequency",
-          { signal: controller.signal }
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json: EngagementFrequency = await res.json();
-        setData(json);
-      } catch (e: unknown) {
-        // Ignore abort errors when the component unmounts
-        if ((e as any)?.name === "AbortError") return;
-        setError(String(e));
-      }
-    })();
-
-    // Cleanup: cancels the request if user leaves the page mid‑fetch
-    return () => controller.abort();
-  }, []);
+    load();
+  }, []); // runs on mount
 
   return (
     <main style={{ padding: 24 }}>
       <h2>Dashboard</h2>
+      <button onClick={load} style={{ marginBottom: 12 }}>Refresh</button>
 
-      {/* while waiting for the network request */}
       {!data && !error && <p>Loading analytics…</p>}
-
-      {/* if something went wrong */}
       {error && <p>Failed to load: {error}</p>}
-
-      {/* show the raw JSON for now; charts come later */}
       {data && <pre>{JSON.stringify(data, null, 2)}</pre>}
     </main>
   );
