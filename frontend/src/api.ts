@@ -33,3 +33,27 @@ export async function createEngagement(payload: EngagementInput) {
   // Otherwise return the created object
   return res.json();
 }
+
+
+// Add API helpers for dashboard
+
+// ---- Dashboard data helpers ----
+export type EngagementFrequency = {
+  totalTalks: number;
+  byFormat: { inPerson: number; online: number };
+  byLocation: { location: string; count: number }[];
+  overTime: { period: string; count: number }[];
+};
+
+export async function getAnalytics(): Promise<EngagementFrequency> {
+  const res = await fetch(`${BASE_URL}/analytics/engagement-frequency`);
+  if (!res.ok) throw new Error(`Analytics failed (${res.status})`);
+  return res.json();
+}
+
+export async function getEngagements() {
+  const res = await fetch(`${BASE_URL}/engagements`);
+  if (!res.ok) throw new Error(`List failed (${res.status})`);
+  return res.json();
+}
+
