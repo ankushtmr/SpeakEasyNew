@@ -1,6 +1,10 @@
 node_modules
 dist
 .env
-.env.*
+*.env
 .DS_Store
 coverage
+
+# Example .env file for Auth
+!frontend/.env.example
+!backend/.env.example

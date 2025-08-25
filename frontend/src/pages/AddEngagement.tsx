@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createEngagement } from "../api";
 import type { EngagementInput } from "../api";
 import { useNavigate } from "react-router-dom";
+import { useAuth0 } from "@auth0/auth0-react";
 
 const schema = z.object({
   // Client
@@ -28,6 +29,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function AddEngagement() {
+  const { getAccessTokenSilently } = useAuth0();
   const navigate = useNavigate();
   const {
     register,
@@ -42,13 +44,16 @@ export default function AddEngagement() {
   });
 
   async function onSubmit(values: FormValues) {
-    // Convert to API input (same shape for this POC)
-    const payload: EngagementInput = { ...values };
-    await createEngagement(payload);
-    // Optional: clear form, then send user to dashboard to see analytics update
+  try {
+    const token = await getAccessTokenSilently();           // 👈 get JWT
+    await createEngagement(values as EngagementInput, token); // 👈 pass JWT
     reset();
     navigate("/dashboard");
+  } catch (err: any) {
+    console.error("Create failed:", err);
+    alert(`Failed to save: ${err.message}`);               // temp feedback
   }
+}
 
   return (
     <main style={{ padding: 24, maxWidth: 640 }}>

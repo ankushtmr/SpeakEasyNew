@@ -1,42 +1,56 @@
 // backend/prisma/schema.prisma
 
+// Generate the Prisma Client for TypeScript
 generator client {
   provider = "prisma-client-js"
 }
 
+// Point Prisma at your Postgres DB (DATABASE_URL is in backend/.env)
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// Minimal Phase‑1 model: Engagement with Client/Talk/Region fields
+// --- ENUMS ---
+
+// Matches our app's talk format
+enum Format {
+  IN_PERSON
+  ONLINE
+}
+
+// --- MODELS ---
+
+model Account {
+  id         String     @id @default(cuid())
+  authUserId String     @unique            // Auth0 user sub, e.g. "auth0|abc123"
+  createdAt  DateTime   @default(now())
+
+  engagements Engagement[]
+}
+
 model Engagement {
   id        String   @id @default(cuid())
 
   // Client Details
   dealName   String
   clientName String
-  industry   String?     // optional for now
-  audience   String?     // "Size, roles" (free‑text for POC)
-  eventType  String?     // Conference, Gala Dinner, etc.
+  industry   String?
+  audience   String?
+  eventType  String?
 
   // Talk Details
   talkTitle  String
-  talkDate   DateTime    // when the talk happened/will happen
-  format     Format      // in-person / online
+  talkDate   DateTime
+  format     Format
 
-  // Region Details
-  location   String      // city, country free‑text for POC
+  // Region
+  location   String
 
-  // Multi‑tenancy later: accountId/userId
-  // accountId String?    // (add after auth)
+  // Ownership (multi‑tenant)
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-// Enum to keep format clean
-enum Format {
-  IN_PERSON
-  ONLINE
 }

@@ -3,7 +3,9 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db";
 
-// Validation schema for creating an engagement
+// ---- Validation schemas ----
+
+// Create payload
 const createEngagementSchema = z.object({
   dealName: z.string().min(1),
   clientName: z.string().min(1),
@@ -12,24 +14,28 @@ const createEngagementSchema = z.object({
   eventType: z.string().optional(),
 
   talkTitle: z.string().min(1),
-  talkDate: z.string().or(z.date()), // accept ISO string or Date (we'll convert)
+  // Accept ISO string or Date; we'll normalize below
+  talkDate: z.union([z.string(), z.date()]),
   format: z.enum(["IN_PERSON", "ONLINE"]),
 
   location: z.string().min(1)
 });
 
-// Query filters for GET /engagements
+// Querystring filters for GET /
 const listQuerySchema = z.object({
-  from: z.string().optional(),  // ISO date string
-  to: z.string().optional(),    // ISO date string
+  from: z.string().optional(),   // ISO date (inclusive)
+  to: z.string().optional(),     // ISO date (inclusive)
   format: z.enum(["IN_PERSON", "ONLINE"]).optional(),
   location: z.string().optional(),
-  q: z.string().optional()      // free-text contains title/deal/client
+  q: z.string().optional()       // free‑text search over title/deal/client
 });
 
 export const engagementsRouter = Router();
 
-// CREATE
+/**
+ * POST /engagements
+ * Creates a row owned by the authenticated account (req.accountId).
+ */
 engagementsRouter.post("/", async (req, res) => {
   const parsed = createEngagementSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -37,11 +43,15 @@ engagementsRouter.post("/", async (req, res) => {
   }
   const data = parsed.data;
 
-  // normalize talkDate (string -> Date)
+  // Normalize talkDate
   const talkDate =
     typeof data.talkDate === "string" ? new Date(data.talkDate) : data.talkDate;
+  if (Number.isNaN(talkDate.getTime())) {
+    return res.status(400).json({ error: "Invalid talkDate" });
+  }
 
   try {
+    const accountId = req.accountId!; // set by auth middleware
     const created = await prisma.engagement.create({
       data: {
         dealName: data.dealName,
@@ -52,7 +62,8 @@ engagementsRouter.post("/", async (req, res) => {
         talkTitle: data.talkTitle,
         talkDate,
         format: data.format,
-        location: data.location
+        location: data.location,
+        accountId // 🔐 ownership
       }
     });
     res.status(201).json(created);
@@ -62,7 +73,10 @@ engagementsRouter.post("/", async (req, res) => {
   }
 });
 
-// LIST
+/**
+ * GET /engagements
+ * Lists up to 100 rows for the authenticated account, with optional filters.
+ */
 engagementsRouter.get("/", async (req, res) => {
   const parsed = listQuerySchema.safeParse(req.query);
   if (!parsed.success) {
@@ -70,30 +84,38 @@ engagementsRouter.get("/", async (req, res) => {
   }
   const { from, to, format, location, q } = parsed.data;
 
-  const where: any = {};
-
-  if (from || to) {
-    where.talkDate = {};
-    if (from) where.talkDate.gte = new Date(from);
-    if (to) where.talkDate.lte = new Date(to);
-  }
-  if (format) where.format = format;
-  if (location) where.location = { contains: location, mode: "insensitive" };
-
-  if (q) {
-    where.OR = [
-      { talkTitle:   { contains: q, mode: "insensitive" } },
-      { dealName:    { contains: q, mode: "insensitive" } },
-      { clientName:  { contains: q, mode: "insensitive" } }
-    ];
-  }
-
   try {
+    const accountId = req.accountId!;
+
+    // Start with owner filter, then layer in optional filters
+    const where: any = { accountId };
+
+    if (from || to) {
+      where.talkDate = {};
+      if (from) where.talkDate.gte = new Date(from);
+      if (to) where.talkDate.lte = new Date(to);
+    }
+
+    if (format) where.format = format;
+
+    if (location) {
+      where.location = { contains: location, mode: "insensitive" };
+    }
+
+    if (q) {
+      where.OR = [
+        { talkTitle:  { contains: q, mode: "insensitive" } },
+        { dealName:   { contains: q, mode: "insensitive" } },
+        { clientName: { contains: q, mode: "insensitive" } }
+      ];
+    }
+
     const rows = await prisma.engagement.findMany({
       where,
       orderBy: { talkDate: "desc" },
       take: 100
     });
+
     res.json(rows);
   } catch (e) {
     console.error(e);

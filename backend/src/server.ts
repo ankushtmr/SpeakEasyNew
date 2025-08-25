@@ -2,27 +2,23 @@ import express from "express";
 import cors from "cors";
 import { engagementsRouter } from "./routes/engagements";
 import { analyticsRouter } from "./routes/analytics";
+import { requireJwt, attachAccount } from "./auth";
 
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use("/analytics", analyticsRouter);
+
 
 // Health
 app.get("/health", (_req, res) => res.json({ ok: true, service: "api" }));
 
-// Engagements CRUD
-app.use("/engagements", engagementsRouter);
+//Everything below requires a valid JWT and will set req.accountId
+app.use(requireJwt, attachAccount);
 
-// Placeholder analytics (will be replaced below)
-app.get("/analytics/engagement-frequency", (_req, res) => {
-  res.json({
-    totalTalks: 0,
-    byFormat: { inPerson: 0, online: 0 },
-    byLocation: [],
-    overTime: []
-  });
-});
+// Protected routers
+app.use("/engagements", engagementsRouter);
+app.use("/analytics", analyticsRouter);
+
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => console.log(`API running on http://localhost:${port}`));

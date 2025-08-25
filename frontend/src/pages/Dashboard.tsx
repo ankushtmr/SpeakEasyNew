@@ -1,16 +1,19 @@
 // frontend/src/pages/Dashboard.tsx
 import { useEffect, useState } from "react";
-import type { EngagementFrequency } from "../api";
-import { getAnalytics } from "../api";
+import { useAuth0 } from "@auth0/auth0-react";
+import type { EngagementFrequency } from "../api";          // type‑only import
+import { getEngagementFrequency } from "../api";            // API helper that needs a token
 import {
   PieChart, Pie, Cell,
   BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   LineChart, Line, ResponsiveContainer
 } from "recharts";
 
-// (We won't set colors/styles in this POC; Recharts uses defaults)
+// (We won't set custom colors in this POC; Recharts defaults are fine)
 
 export default function Dashboard() {
+  const { getAccessTokenSilently } = useAuth0();
+
   const [data, setData] = useState<EngagementFrequency | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,7 +22,11 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError(null);
-      const json = await getAnalytics();
+
+      // 🔐 Get a JWT for our API's audience, then call the endpoint
+      const token = await getAccessTokenSilently();
+      const json = await getEngagementFrequency(token);
+
       setData(json);
     } catch (e: any) {
       setError(String(e));
@@ -50,7 +57,7 @@ export default function Dashboard() {
 }
 
 function DashboardContent({ data }: { data: EngagementFrequency }) {
-  // Transformations for charts
+  // Transform analytics JSON into chart-friendly arrays
   const kpis = [{ label: "Total Talks", value: data.totalTalks }];
 
   const formatData = [
@@ -89,7 +96,6 @@ function DashboardContent({ data }: { data: EngagementFrequency }) {
               outerRadius={100}
               label
             >
-              {/* Cells without explicit colors will still render with defaults */}
               {formatData.map((_, i) => <Cell key={i} />)}
             </Pie>
             <Tooltip />

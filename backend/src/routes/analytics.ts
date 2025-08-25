@@ -2,47 +2,52 @@
 import { Router } from "express";
 import { prisma } from "../db";
 
-// Helpers
+// Bucket a Date into "YYYY-MM"
 function toYearMonth(d: Date) {
   const y = d.getUTCFullYear();
   const m = d.getUTCMonth() + 1;
-  return `${y}-${String(m).padStart(2, "0")}`; // e.g., "2025-08"
+  return `${y}-${String(m).padStart(2, "0")}`;
 }
 
 export const analyticsRouter = Router();
 
 // GET /analytics/engagement-frequency
-analyticsRouter.get("/engagement-frequency", async (_req, res) => {
+analyticsRouter.get("/engagement-frequency", async (req, res) => {
   try {
-    const all = await prisma.engagement.findMany({
+    const accountId = req.accountId!; // set by auth middleware
+
+    // Pull only fields we need, scoped to this account
+    const rows = await prisma.engagement.findMany({
+      where: { accountId },
       select: { talkDate: true, format: true, location: true }
     });
 
     // total
-    const totalTalks = all.length;
+    const totalTalks = rows.length;
 
     // by format
     let inPerson = 0, online = 0;
-    for (const row of all) {
-      if (row.format === "IN_PERSON") inPerson++;
-      if (row.format === "ONLINE") online++;
+    for (const r of rows) {
+      if (r.format === "IN_PERSON") inPerson++;
+      else if (r.format === "ONLINE") online++;
     }
 
     // by location
     const locMap = new Map<string, number>();
-    for (const row of all) {
-      const key = row.location.trim();
+    for (const r of rows) {
+      const key = r.location.trim();
       locMap.set(key, (locMap.get(key) ?? 0) + 1);
     }
     const byLocation = Array.from(locMap.entries())
       .map(([location, count]) => ({ location, count }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 10); // top 10
+      .slice(0, 10);
 
-    // over time (bucket per YYYY-MM)
+    // over time (YYYY-MM buckets)
     const timeMap = new Map<string, number>();
-    for (const row of all) {
-      const key = toYearMonth(new Date(row.talkDate));
+    for (const r of rows) {
+      // Prisma returns Date objects for DateTime; cast for safety then bucket
+      const key = toYearMonth(new Date(r.talkDate));
       timeMap.set(key, (timeMap.get(key) ?? 0) + 1);
     }
     const overTime = Array.from(timeMap.entries())
