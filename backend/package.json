@@ -6,11 +6,12 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc -p .",
-    "start": "node dist/server.js"
+    "build": "prisma generate && tsc",
+    "start": "node dist/server.js",
+    "migrate:deploy": "prisma migrate deploy"
   },
   "keywords": [],
-  "author": "",
+  "author": "Ankush Chohan",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
