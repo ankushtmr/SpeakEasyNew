@@ -27,7 +27,7 @@ export type EngagementFrequency = {
 
 // ---- Base URL for your backend ----
 // (In prod you'll change this to your Cloud Run URL)
-const BASE_URL = "http://localhost:4000";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 // ---- Small helper to call the API ----
 // If a token is provided, it sends `Authorization: Bearer <token>`
