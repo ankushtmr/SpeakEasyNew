@@ -45,7 +45,12 @@ export default function AddEngagement() {
 
   async function onSubmit(values: FormValues) {
   try {
-    const token = await getAccessTokenSilently();           // 👈 get JWT
+    const token = await getAccessTokenSilently({
+  authorizationParams: {
+    audience: import.meta.env.VITE_AUTH0_AUDIENCE,
+    scope: "openid profile email"
+  }
+});           // 👈 get JWT
     await createEngagement(values as EngagementInput, token); // 👈 pass JWT
     reset();
     navigate("/dashboard");

@@ -24,7 +24,12 @@ export default function Dashboard() {
       setError(null);
 
       // 🔐 Get a JWT for our API's audience, then call the endpoint
-      const token = await getAccessTokenSilently();
+      const token = await getAccessTokenSilently({
+  authorizationParams: {
+    audience: import.meta.env.VITE_AUTH0_AUDIENCE,
+    scope: "openid profile email"
+  }
+});
       const json = await getEngagementFrequency(token);
 
       setData(json);
